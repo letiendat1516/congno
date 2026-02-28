@@ -61,6 +61,7 @@ echo ============================================
     --main-jar "GenLicenseKey-fat.jar" ^
     --main-class "com.dat.whmanagement.license.LicenseGenerator" ^
     --dest "%DIST%" ^
+    --win-console ^
     --app-version "1.0" ^
     --vendor "DAT Software" ^
     --description "Tool tao License Key"
