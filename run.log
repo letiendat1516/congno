@@ -1,0 +1,7 @@
+Feb 28, 2026 1:00:58 PM com.sun.javafx.application.PlatformImpl startup
+WARNING: Unsupported JavaFX configuration: classes were loaded from 'unnamed module @69902b8'
+SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+SLF4J: Defaulting to no-operation (NOP) logger implementation
+SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+Migration OK: migration/V1__init.sql
+Migration OK: migration/V2__pending_return.sql

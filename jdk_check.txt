@@ -1,0 +1,25 @@
+ Volume in drive C is OS
+ Volume Serial Number is 0F80-D8D0
+
+ Directory of C:\Users\utube\.jdks\ms-17.0.18\bin
+
+02/25/2026  03:23 PM           152,088 jpackage.dll
+02/25/2026  03:23 PM            24,608 jpackage.exe
+               2 File(s)        176,696 bytes
+               0 Dir(s)  167,126,601,728 bytes free
+ Volume in drive C is OS
+ Volume Serial Number is 0F80-D8D0
+
+ Directory of C:\Users\utube\.jdks\ms-17.0.18\bin
+
+02/25/2026  03:23 PM            24,096 jlink.exe
+               1 File(s)         24,096 bytes
+               0 Dir(s)  167,126,601,728 bytes free
+ Volume in drive C is OS
+ Volume Serial Number is 0F80-D8D0
+
+ Directory of C:\Users\utube\.jdks\ms-17.0.18\bin
+
+02/25/2026  03:23 PM            24,136 javac.exe
+               1 File(s)         24,136 bytes
+               0 Dir(s)  167,126,597,632 bytes free
