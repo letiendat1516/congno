@@ -15,7 +15,7 @@ public class ReturnOrderDAOImpl implements ReturnOrderDAO {
 
     @Override
     public void insert(ReturnOrder order) {
-        String sqlOrder  = "INSERT INTO return_orders(order_number, customer_id, customer_name, return_date, total_amount, note) VALUES (?,?,?,?,?,?)";
+        String sqlOrder  = "INSERT INTO return_orders(order_number, customer_id, customer_name, return_date, total_amount, note, deducted_from_total, deducted_from_paid) VALUES (?,?,?,?,?,?,?,?)";
         String sqlDetail = "INSERT INTO return_order_details(return_order_id, product_id, quantity, unit_price, total) VALUES (?,?,?,?,?)";
         String sqlStock  = "UPDATE products SET stock = stock + ? WHERE id = ?";
         String sqlMove   = "INSERT INTO stock_movements(product_id, movement_date, reference_type, reference_id, quantity, unit_price, note) VALUES (?,?,?,?,?,?,?)";
@@ -25,27 +25,43 @@ public class ReturnOrderDAOImpl implements ReturnOrderDAO {
             conn = DatabaseConfig.getConnection();
             conn.setAutoCommit(false);
 
+            // Tính trừ bao nhiêu vào đâu
+            // Còn nợ → chỉ giảm total_amount (nợ giảm, paid giữ nguyên)
+            // Không còn nợ → giảm CẢ total_amount VÀ paid_amount (nợ vẫn = 0)
+            double returnAmount = order.getTotalAmount();
+            double debt = getCustomerDebt(conn, order.getCustomerId());
+            double fromTotal;  // phần giảm total_amount
+            double fromPaid;   // phần giảm paid_amount
+
+            if (debt >= returnAmount) {
+                // Nợ đủ lớn → chỉ trừ total, nợ giảm
+                fromTotal = returnAmount;
+                fromPaid  = 0;
+            } else {
+                // Nợ < tiền trả → trừ hết nợ + phần dư trừ cả total lẫn paid
+                fromTotal = returnAmount;                // total luôn giảm
+                fromPaid  = returnAmount - debt;         // paid giảm phần không phải nợ
+            }
+
             int orderId;
             try (PreparedStatement ps = conn.prepareStatement(sqlOrder, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, order.getOrderNumber()); ps.setInt(2, order.getCustomerId());
                 ps.setString(3, order.getCustomerName()); ps.setString(4, order.getReturnDate().toString());
                 ps.setDouble(5, order.getTotalAmount()); ps.setString(6, order.getNote());
+                ps.setDouble(7, fromTotal); ps.setDouble(8, fromPaid);
                 ps.executeUpdate();
                 try (ResultSet rs = ps.getGeneratedKeys()) { rs.next(); orderId = rs.getInt(1); order.setId(orderId); }
             }
 
             for (ReturnOrderDetail d : order.getDetails()) {
-                // Insert detail
                 try (PreparedStatement ps = conn.prepareStatement(sqlDetail)) {
                     ps.setInt(1, orderId); ps.setInt(2, d.getProductId());
                     ps.setDouble(3, d.getQuantity()); ps.setDouble(4, d.getUnitPrice()); ps.setDouble(5, d.getTotal());
                     ps.executeUpdate();
                 }
-                // Cộng lại tồn kho (trả hàng = nhập lại kho)
                 try (PreparedStatement ps = conn.prepareStatement(sqlStock)) {
                     ps.setDouble(1, d.getQuantity()); ps.setInt(2, d.getProductId()); ps.executeUpdate();
                 }
-                // Ghi movement (dương = nhập lại)
                 try (PreparedStatement ps = conn.prepareStatement(sqlMove)) {
                     ps.setInt(1, d.getProductId()); ps.setString(2, order.getReturnDate().toString());
                     ps.setString(3, "ADJUST"); ps.setInt(4, orderId);
@@ -53,6 +69,11 @@ public class ReturnOrderDAOImpl implements ReturnOrderDAO {
                     ps.setString(7, "Trả hàng: " + order.getOrderNumber()); ps.executeUpdate();
                 }
             }
+
+            // Trừ trực tiếp vào sales_orders
+            if (fromTotal > 0.001) reduceColumn(conn, order.getCustomerId(), "total_amount", fromTotal);
+            if (fromPaid  > 0.001) reduceColumn(conn, order.getCustomerId(), "paid_amount", fromPaid);
+
             conn.commit();
         } catch (SQLException e) {
             if (conn != null) try { conn.rollback(); } catch (SQLException ignored) {}
@@ -114,15 +135,39 @@ public class ReturnOrderDAOImpl implements ReturnOrderDAO {
 
     @Override
     public void delete(int orderId) {
-        String sqlOld  = "SELECT product_id, quantity FROM return_order_details WHERE return_order_id=?";
-        String sqlStock = "UPDATE products SET stock = stock - ? WHERE id = ?";
-        String sqlDelMov = "DELETE FROM stock_movements WHERE reference_type='ADJUST' AND reference_id=?";
-        String sqlDel   = "DELETE FROM return_orders WHERE id = ?";
+        String sqlGetInfo = "SELECT customer_id, total_amount, deducted_from_total, deducted_from_paid FROM return_orders WHERE id=?";
+        String sqlOld     = "SELECT product_id, quantity FROM return_order_details WHERE return_order_id=?";
+        String sqlStock   = "UPDATE products SET stock = stock - ? WHERE id = ?";
+        String sqlDelMov  = "DELETE FROM stock_movements WHERE reference_type='ADJUST' AND reference_id=?";
+        String sqlDelDet  = "DELETE FROM return_order_details WHERE return_order_id=?";
+        String sqlDel     = "DELETE FROM return_orders WHERE id = ?";
         Connection conn = null;
         try {
             conn = DatabaseConfig.getConnection();
             conn.setAutoCommit(false);
-            // Reverse stock (trả hàng đã cộng kho, nên trừ lại)
+
+            // Lấy thông tin phiếu trả để hoàn ngược chính xác
+            int customerId = 0;
+            double totalAmount = 0, fromTotal = 0, fromPaid = 0;
+            try (PreparedStatement ps = conn.prepareStatement(sqlGetInfo)) {
+                ps.setInt(1, orderId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        customerId  = rs.getInt("customer_id");
+                        totalAmount = rs.getDouble("total_amount");
+                        fromTotal   = rs.getDouble("deducted_from_total");
+                        fromPaid    = rs.getDouble("deducted_from_paid");
+                    }
+                }
+            }
+
+            // Phiếu trả cũ (trước V3) chưa có tracking → fallback
+            if (fromTotal < 0.001 && fromPaid < 0.001 && totalAmount > 0.001) {
+                fromTotal = totalAmount;
+                fromPaid  = totalAmount; // cộng lại cả total lẫn paid (như chưa trả)
+            }
+
+            // Reverse stock
             try (PreparedStatement ps = conn.prepareStatement(sqlOld)) {
                 ps.setInt(1, orderId);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -136,6 +181,13 @@ public class ReturnOrderDAOImpl implements ReturnOrderDAO {
                 }
             }
             try (PreparedStatement ps = conn.prepareStatement(sqlDelMov)) { ps.setInt(1, orderId); ps.executeUpdate(); }
+
+            // Hoàn ngược: cộng lại đúng cột đã trừ
+            if (fromTotal > 0.001) addBackColumn(conn, customerId, "total_amount", fromTotal);
+            if (fromPaid  > 0.001) addBackColumn(conn, customerId, "paid_amount", fromPaid);
+
+            // Xóa chi tiết và phiếu trả
+            try (PreparedStatement ps = conn.prepareStatement(sqlDelDet)) { ps.setInt(1, orderId); ps.executeUpdate(); }
             try (PreparedStatement ps = conn.prepareStatement(sqlDel))    { ps.setInt(1, orderId); ps.executeUpdate(); }
             conn.commit();
         } catch (SQLException e) {
@@ -152,12 +204,15 @@ public class ReturnOrderDAOImpl implements ReturnOrderDAO {
         o.setCustomerId(rs.getInt("customer_id")); o.setCustomerName(rs.getString("cname"));
         String d = rs.getString("return_date"); if (d != null) o.setReturnDate(LocalDate.parse(d));
         o.setTotalAmount(rs.getDouble("total_amount")); o.setNote(rs.getString("note"));
+        try { o.setDeductedFromTotal(rs.getDouble("deducted_from_total")); } catch (SQLException ignored) {}
+        try { o.setDeductedFromPaid(rs.getDouble("deducted_from_paid")); }   catch (SQLException ignored) {}
         return o;
     }
 
     @Override
     public void update(ReturnOrder order) {
-        String sqlHeader      = "UPDATE return_orders SET customer_id=?, customer_name=?, return_date=?, total_amount=?, note=? WHERE id=?";
+        String sqlGetOld      = "SELECT customer_id, deducted_from_total, deducted_from_paid FROM return_orders WHERE id=?";
+        String sqlHeader      = "UPDATE return_orders SET customer_id=?, customer_name=?, return_date=?, total_amount=?, note=?, deducted_from_total=?, deducted_from_paid=? WHERE id=?";
         String sqlOldDetails  = "SELECT product_id, quantity FROM return_order_details WHERE return_order_id=?";
         String sqlDelDetails  = "DELETE FROM return_order_details WHERE return_order_id=?";
         String sqlDelMovement = "DELETE FROM stock_movements WHERE reference_type='ADJUST' AND reference_id=?";
@@ -170,7 +225,21 @@ public class ReturnOrderDAOImpl implements ReturnOrderDAO {
             conn = DatabaseConfig.getConnection();
             conn.setAutoCommit(false);
 
-            // 1. Reverse old stock (trả hàng cũ = đã cộng kho, nên trừ lại)
+            // 0. Lấy thông tin cũ để hoàn ngược
+            int oldCustomerId = 0;
+            double oldFromTotal = 0, oldFromPaid = 0;
+            try (PreparedStatement ps = conn.prepareStatement(sqlGetOld)) {
+                ps.setInt(1, order.getId());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        oldCustomerId = rs.getInt("customer_id");
+                        oldFromTotal = rs.getDouble("deducted_from_total");
+                        oldFromPaid  = rs.getDouble("deducted_from_paid");
+                    }
+                }
+            }
+
+            // 1. Reverse old stock
             try (PreparedStatement ps = conn.prepareStatement(sqlOldDetails)) {
                 ps.setInt(1, order.getId());
                 try (ResultSet rs = ps.executeQuery()) {
@@ -188,18 +257,37 @@ public class ReturnOrderDAOImpl implements ReturnOrderDAO {
             try (PreparedStatement ps = conn.prepareStatement(sqlDelDetails)) { ps.setInt(1, order.getId()); ps.executeUpdate(); }
             try (PreparedStatement ps = conn.prepareStatement(sqlDelMovement)) { ps.setInt(1, order.getId()); ps.executeUpdate(); }
 
-            // 3. Update header
+            // 3. Hoàn ngược trả hàng cũ
+            if (oldFromTotal > 0.001) addBackColumn(conn, oldCustomerId, "total_amount", oldFromTotal);
+            if (oldFromPaid  > 0.001) addBackColumn(conn, oldCustomerId, "paid_amount", oldFromPaid);
+
+            // 4. Tính trừ mới
+            double returnAmount = order.getTotalAmount();
+            double debt = getCustomerDebt(conn, order.getCustomerId());
+            double newFromTotal;
+            double newFromPaid;
+            if (debt >= returnAmount) {
+                newFromTotal = returnAmount;
+                newFromPaid  = 0;
+            } else {
+                newFromTotal = returnAmount;
+                newFromPaid  = returnAmount - debt;
+            }
+
+            // 5. Update header (kèm thông tin deducted)
             try (PreparedStatement ps = conn.prepareStatement(sqlHeader)) {
                 ps.setInt(1, order.getCustomerId());
                 ps.setString(2, order.getCustomerName());
                 ps.setString(3, order.getReturnDate().toString());
                 ps.setDouble(4, order.getTotalAmount());
                 ps.setString(5, order.getNote());
-                ps.setInt(6, order.getId());
+                ps.setDouble(6, newFromTotal);
+                ps.setDouble(7, newFromPaid);
+                ps.setInt(8, order.getId());
                 ps.executeUpdate();
             }
 
-            // 4. Insert new details + cộng stock lại + movements
+            // 6. Insert new details + stock + movements
             for (ReturnOrderDetail det : order.getDetails()) {
                 try (PreparedStatement ps = conn.prepareStatement(sqlInsDetail)) {
                     ps.setInt(1, order.getId()); ps.setInt(2, det.getProductId());
@@ -218,12 +306,94 @@ public class ReturnOrderDAOImpl implements ReturnOrderDAO {
                 }
             }
 
+            // 7. Áp dụng trừ mới
+            if (newFromTotal > 0.001) reduceColumn(conn, order.getCustomerId(), "total_amount", newFromTotal);
+            if (newFromPaid  > 0.001) reduceColumn(conn, order.getCustomerId(), "paid_amount", newFromPaid);
+
             conn.commit();
         } catch (SQLException e) {
             if (conn != null) try { conn.rollback(); } catch (SQLException ignored) {}
             throw new RuntimeException("Update return order failed: " + e.getMessage(), e);
         } finally {
             if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ignored) {}
+        }
+    }
+
+    /**
+     * Cộng lại giá trị vào cột (total_amount hoặc paid_amount) của sales_orders khi xóa/sửa phiếu trả.
+     */
+    private void addBackColumn(Connection conn, int customerId, String column, double amount) throws SQLException {
+        double left = amount;
+        // Cộng lại vào phiếu xuất gần nhất
+        while (left > 0.001) {
+            String sql = "SELECT id FROM sales_orders WHERE customer_id = ? ORDER BY order_date DESC LIMIT 1";
+            int soId = -1;
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setInt(1, customerId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) soId = rs.getInt("id");
+                }
+            }
+            if (soId < 0) break;
+            String sqlUpdate = "UPDATE sales_orders SET " + column + " = " + column + " + ? WHERE id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sqlUpdate)) {
+                ps.setDouble(1, left);
+                ps.setInt(2, soId);
+                ps.executeUpdate();
+            }
+            left = 0;
+        }
+    }
+
+    /**
+     * Giảm 1 cột (total_amount hoặc paid_amount) từ các phiếu xuất gần nhất.
+     * Lặp cho đến khi trừ hết amount hoặc không còn phiếu nào.
+     */
+    private void reduceColumn(Connection conn, int customerId, String column, double amount) throws SQLException {
+        double left = amount;
+        while (left > 0.001) {
+            // Lấy phiếu gần nhất có cột > 0
+            String sqlFind = "SELECT id, " + column + " FROM sales_orders WHERE customer_id = ? AND " + column + " > 0 ORDER BY order_date DESC LIMIT 1";
+            int soId = -1;
+            double available = 0;
+            try (PreparedStatement ps = conn.prepareStatement(sqlFind)) {
+                ps.setInt(1, customerId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) { soId = rs.getInt("id"); available = rs.getDouble(column); }
+                }
+            }
+            if (soId < 0) break; // Không còn phiếu nào
+
+            double deduct = Math.min(left, available);
+            String sqlUpdate = "UPDATE sales_orders SET " + column + " = " + column + " - ? WHERE id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sqlUpdate)) {
+                ps.setDouble(1, deduct);
+                ps.setInt(2, soId);
+                ps.executeUpdate();
+            }
+            left -= deduct;
+        }
+    }
+
+    /**
+     * Tính nợ còn lại của khách hàng (trong cùng transaction).
+     * Nợ = tổng phát sinh - đã trả (paid_amount + payments)
+     */
+    private double getCustomerDebt(Connection conn, int customerId) throws SQLException {
+        String sql = """
+                SELECT COALESCE(SUM(so.total_amount), 0)
+                     - COALESCE(SUM(so.paid_amount), 0)
+                     - COALESCE((SELECT SUM(p.amount) FROM payments p
+                                 WHERE p.target_type = 'CUSTOMER' AND p.target_id = ?), 0)
+                  AS debt
+                FROM sales_orders so WHERE so.customer_id = ?
+                """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, customerId);
+            ps.setInt(2, customerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Math.max(rs.getDouble("debt"), 0) : 0;
+            }
         }
     }
 }

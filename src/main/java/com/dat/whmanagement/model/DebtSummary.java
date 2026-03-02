@@ -26,9 +26,16 @@ public class DebtSummary {
         this.targetName  = targetName;
         this.phone       = phone;
         this.targetType  = targetType;
-        this.totalAmount = totalAmount;
-        this.paidAmount  = paidAmount;
-        this.debtAmount  = totalAmount - paidAmount;
+        // Nếu paid > total → nợ âm → trừ thẳng vào paid, để nợ = 0
+        if (paidAmount > totalAmount) {
+            this.totalAmount = totalAmount;
+            this.paidAmount  = totalAmount;
+            this.debtAmount  = 0;
+        } else {
+            this.totalAmount = totalAmount;
+            this.paidAmount  = paidAmount;
+            this.debtAmount  = totalAmount - paidAmount;
+        }
     }
 
     public int         getTargetId()    { return targetId;    }

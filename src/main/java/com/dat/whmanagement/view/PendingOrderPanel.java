@@ -13,6 +13,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import com.dat.whmanagement.util.ComboBoxHelper;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -76,7 +77,7 @@ public class PendingOrderPanel extends BorderPane {
         });
 
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox actionBar = new HBox(10, spacer, search, btnAdd);
+        HBox actionBar = new HBox(10, search, spacer, btnAdd);
         actionBar.setAlignment(Pos.CENTER_LEFT);
         actionBar.setPadding(new Insets(16, 0, 8, 0));
 
@@ -277,14 +278,9 @@ public class PendingOrderPanel extends BorderPane {
         lblNum.setFont(Font.font("System", FontWeight.BOLD, 14));
 
         List<Customer> customers = customerService.getAll();
-        ComboBox<Customer> cbCustomer = new ComboBox<>(FXCollections.observableArrayList(customers));
-        cbCustomer.setPromptText("Chọn khách hàng *"); cbCustomer.setPrefWidth(260);
-        cbCustomer.setCellFactory(lv -> new ListCell<>() {
-            @Override protected void updateItem(Customer c, boolean empty) { super.updateItem(c, empty); setText(empty || c == null ? null : c.getName()); }
-        });
-        cbCustomer.setButtonCell(new ListCell<>() {
-            @Override protected void updateItem(Customer c, boolean empty) { super.updateItem(c, empty); setText(empty || c == null ? null : c.getName()); }
-        });
+        ComboBox<Customer> cbCustomer = new ComboBox<>();
+        cbCustomer.setPromptText("Gõ mã/tên KH để tìm *"); cbCustomer.setPrefWidth(260);
+        ComboBoxHelper.makeSearchable(cbCustomer, customers, c -> c.getName());
 
         DatePicker dpOrder    = new DatePicker(LocalDate.now());
         DatePicker dpExpected = new DatePicker(LocalDate.now().plusWeeks(1));
@@ -340,21 +336,16 @@ public class PendingOrderPanel extends BorderPane {
         details.addListener((javafx.collections.ListChangeListener<PendingOrderDetail>) c -> refreshTotal.run());
 
         List<Product> products = productService.getAll();
-        ComboBox<Product> cbProd = new ComboBox<>(FXCollections.observableArrayList(products));
-        cbProd.setPromptText("Chọn sản phẩm"); cbProd.setPrefWidth(210);
-        cbProd.setCellFactory(lv -> new ListCell<>() {
-            @Override protected void updateItem(Product p, boolean empty) { super.updateItem(p, empty); setText(empty || p == null ? null : p.getCode() + " - " + p.getName()); }
-        });
-        cbProd.setButtonCell(new ListCell<>() {
-            @Override protected void updateItem(Product p, boolean empty) { super.updateItem(p, empty); setText(empty || p == null ? null : p.getCode() + " - " + p.getName()); }
-        });
+        ComboBox<Product> cbProd = new ComboBox<>();
+        cbProd.setPromptText("Gõ mã/tên SP để tìm"); cbProd.setPrefWidth(210);
+        ComboBoxHelper.makeSearchable(cbProd, products, p -> p.getCode() + " - " + p.getName());
 
         TextField tfQty   = new TextField(); tfQty.setPromptText("Số lượng"); tfQty.setPrefWidth(85);
         TextField tfPrice = new TextField(); tfPrice.setPromptText("Đơn giá"); tfPrice.setPrefWidth(110);
         Button btnAddRow  = new Button("+ Thêm", new FontIcon(Material2OutlinedAL.ADD));
         btnAddRow.getStyleClass().addAll(Styles.BUTTON_OUTLINED, Styles.ACCENT);
         btnAddRow.setOnAction(e -> {
-            Product sel = cbProd.getValue(); if (sel == null) return;
+            Product sel = ComboBoxHelper.safeGetValue(cbProd); if (sel == null) return;
             try {
                 double qty   = Double.parseDouble(tfQty.getText().trim());
                 double price = Double.parseDouble(tfPrice.getText().trim().replace(",", ""));
@@ -391,7 +382,7 @@ public class PendingOrderPanel extends BorderPane {
         saveBtn.getStyleClass().add(Styles.ACCENT);
 
         saveBtn.addEventFilter(javafx.event.ActionEvent.ACTION, e -> {
-            if (cbCustomer.getValue() == null) {
+            if (ComboBoxHelper.safeGetValue(cbCustomer) == null) {
                 lblError.setText("⚠  Vui lòng chọn khách hàng!"); lblError.setVisible(true); lblError.setManaged(true); e.consume(); return;
             }
             if (details.isEmpty()) {
@@ -401,10 +392,11 @@ public class PendingOrderPanel extends BorderPane {
 
         dialog.setResultConverter(btn -> {
             if (btn == btnSave) {
+                Customer cust = ComboBoxHelper.safeGetValue(cbCustomer);
                 PendingOrder order = new PendingOrder();
                 order.setOrderNumber(orderNum);
-                order.setCustomerId(cbCustomer.getValue().getId());
-                order.setCustomerName(cbCustomer.getValue().getName());
+                order.setCustomerId(cust.getId());
+                order.setCustomerName(cust.getName());
                 order.setOrderDate(dpOrder.getValue());
                 order.setExpectedDate(dpExpected.getValue());
                 order.setTotalAmount(details.stream().mapToDouble(PendingOrderDetail::getTotal).sum());

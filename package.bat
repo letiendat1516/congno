@@ -19,12 +19,31 @@ if errorlevel 1 (
 )
 echo [OK] Maven build thanh cong.
 
+:: Tat cac EXE dang chay (neu co)
+taskkill /F /IM QuanLyKho.exe >nul 2>&1
+taskkill /F /IM GenLicenseKey.exe >nul 2>&1
+timeout /t 2 /nobreak >nul
+
 :: Tao thu muc dist
 if not exist "%DIST%" mkdir "%DIST%"
 
-:: Xoa output cu
-if exist "%DIST%\QuanLyKho"    rmdir /s /q "%DIST%\QuanLyKho"
-if exist "%DIST%\GenLicenseKey" rmdir /s /q "%DIST%\GenLicenseKey"
+:: Xoa output cu (retry neu bi lock)
+if exist "%DIST%\QuanLyKho" (
+    rmdir /s /q "%DIST%\QuanLyKho" 2>nul
+    if exist "%DIST%\QuanLyKho" (
+        echo [WARN] Thu muc QuanLyKho bi khoa, thu lai...
+        timeout /t 3 /nobreak >nul
+        rmdir /s /q "%DIST%\QuanLyKho" 2>nul
+    )
+)
+if exist "%DIST%\GenLicenseKey" (
+    rmdir /s /q "%DIST%\GenLicenseKey" 2>nul
+    if exist "%DIST%\GenLicenseKey" (
+        echo [WARN] Thu muc GenLicenseKey bi khoa, thu lai...
+        timeout /t 3 /nobreak >nul
+        rmdir /s /q "%DIST%\GenLicenseKey" 2>nul
+    )
+)
 
 echo.
 echo ============================================

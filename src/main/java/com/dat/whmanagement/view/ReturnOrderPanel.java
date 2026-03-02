@@ -13,6 +13,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import com.dat.whmanagement.util.ComboBoxHelper;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -75,7 +76,7 @@ public class ReturnOrderPanel extends BorderPane {
         });
 
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox actionBar = new HBox(10, spacer, search, btnAdd);
+        HBox actionBar = new HBox(10, search, spacer, btnAdd);
         actionBar.setAlignment(Pos.CENTER_LEFT);
         actionBar.setPadding(new Insets(16, 0, 8, 0));
 
@@ -206,18 +207,16 @@ public class ReturnOrderPanel extends BorderPane {
         lblNum.setFont(Font.font("System", FontWeight.BOLD, 14));
 
         List<Customer> customers = customerService.getAll();
-        ComboBox<Customer> cbCustomer = new ComboBox<>(FXCollections.observableArrayList(customers));
-        cbCustomer.setPromptText("Chọn khách hàng *"); cbCustomer.setPrefWidth(260);
-        cbCustomer.setCellFactory(lv -> new ListCell<>() {
-            @Override protected void updateItem(Customer c, boolean empty) { super.updateItem(c, empty); setText(empty || c == null ? null : c.getName()); }
-        });
-        cbCustomer.setButtonCell(new ListCell<>() {
-            @Override protected void updateItem(Customer c, boolean empty) { super.updateItem(c, empty); setText(empty || c == null ? null : c.getName()); }
-        });
+        ComboBox<Customer> cbCustomer = new ComboBox<>();
+        cbCustomer.setPromptText("Gõ mã/tên KH để tìm *"); cbCustomer.setPrefWidth(260);
+        ComboBoxHelper.makeSearchable(cbCustomer, customers, c -> c.getName());
 
         DatePicker dpDate = new DatePicker(isEdit ? existing.getReturnDate() : LocalDate.now());
         TextField  tfNote = new TextField(isEdit && existing.getNote() != null ? existing.getNote() : "");
         tfNote.setPromptText("Lý do trả hàng...");
+        TextField tfVatRate = new TextField("10");
+        tfVatRate.setPromptText("% thuế");
+        tfVatRate.setPrefWidth(80);
 
         if (isEdit) {
             customers.stream().filter(c -> c.getId() == existing.getCustomerId())
@@ -232,7 +231,8 @@ public class ReturnOrderPanel extends BorderPane {
         headerGrid.addRow(0, new Label("Số phiếu:"),   lblNum);
         headerGrid.addRow(1, new Label("Khách hàng *:"), cbCustomer);
         headerGrid.addRow(2, new Label("Ngày trả:"),    dpDate);
-        headerGrid.addRow(3, new Label("Lý do:"),       tfNote);
+        headerGrid.addRow(3, new Label("Thuế (%):"),    tfVatRate);
+        headerGrid.addRow(4, new Label("Lý do:"),       tfNote);
 
         ObservableList<ReturnOrderDetail> details = FXCollections.observableArrayList();
         if (isEdit) details.setAll(service.getDetails(existing.getId()));
@@ -258,12 +258,26 @@ public class ReturnOrderPanel extends BorderPane {
         dTotal.setCellValueFactory(cd -> new SimpleStringProperty(CURRENCY.format(cd.getValue().getTotal()) + " ₫"));
         dTotal.setPrefWidth(120); dTotal.setStyle("-fx-alignment: CENTER_RIGHT; -fx-font-weight: bold;");
 
+        Label lblSubVal   = new Label("0 ₫");
+        Label lblVATVal   = new Label("0 ₫");
         Label lblTotalVal = new Label("0 ₫");
+        Label lblVATLabel = new Label("Thuế (10%):");
         lblTotalVal.setFont(Font.font("System", FontWeight.BOLD, 13));
         lblTotalVal.setStyle("-fx-text-fill: #E53935;");
-        Runnable refreshTotal = () -> lblTotalVal.setText(CURRENCY.format(details.stream().mapToDouble(ReturnOrderDetail::getTotal).sum()) + " ₫");
+        Runnable refreshTotal = () -> {
+            double sub = details.stream().mapToDouble(ReturnOrderDetail::getTotal).sum();
+            double vatRate = 10;
+            try { vatRate = Double.parseDouble(tfVatRate.getText().trim()); } catch (NumberFormatException ignored) {}
+            double vat = sub * vatRate / 100;
+            double total = sub + vat;
+            lblSubVal.setText(CURRENCY.format(sub) + " ₫");
+            lblVATLabel.setText("Thuế (" + (int) vatRate + "%):");
+            lblVATVal.setText(CURRENCY.format(vat) + " ₫");
+            lblTotalVal.setText(CURRENCY.format(total) + " ₫");
+        };
         details.addListener((javafx.collections.ListChangeListener<ReturnOrderDetail>) c -> refreshTotal.run());
         refreshTotal.run();
+        tfVatRate.textProperty().addListener((obs, o, v) -> refreshTotal.run());
 
         TableColumn<ReturnOrderDetail, Void> dDel = new TableColumn<>("");
         dDel.setPrefWidth(40);
@@ -276,21 +290,16 @@ public class ReturnOrderPanel extends BorderPane {
         detailTable.getColumns().addAll(dCode, dName, dUnit, dQty, dPrice, dTotal, dDel);
 
         List<Product> products = productService.getAll();
-        ComboBox<Product> cbProd = new ComboBox<>(FXCollections.observableArrayList(products));
-        cbProd.setPromptText("Chọn sản phẩm"); cbProd.setPrefWidth(210);
-        cbProd.setCellFactory(lv -> new ListCell<>() {
-            @Override protected void updateItem(Product p, boolean empty) { super.updateItem(p, empty); setText(empty || p == null ? null : p.getCode() + " - " + p.getName()); }
-        });
-        cbProd.setButtonCell(new ListCell<>() {
-            @Override protected void updateItem(Product p, boolean empty) { super.updateItem(p, empty); setText(empty || p == null ? null : p.getCode() + " - " + p.getName()); }
-        });
+        ComboBox<Product> cbProd = new ComboBox<>();
+        cbProd.setPromptText("Gõ mã/tên SP để tìm"); cbProd.setPrefWidth(210);
+        ComboBoxHelper.makeSearchable(cbProd, products, p -> p.getCode() + " - " + p.getName());
 
         TextField tfQty   = new TextField(); tfQty.setPromptText("Số lượng"); tfQty.setPrefWidth(85);
         TextField tfPrice = new TextField(); tfPrice.setPromptText("Đơn giá"); tfPrice.setPrefWidth(110);
         Button btnAddRow  = new Button("+ Thêm", new FontIcon(Material2OutlinedAL.ADD));
         btnAddRow.getStyleClass().addAll(Styles.BUTTON_OUTLINED, Styles.ACCENT);
         btnAddRow.setOnAction(e -> {
-            Product sel = cbProd.getValue(); if (sel == null) return;
+            Product sel = ComboBoxHelper.safeGetValue(cbProd); if (sel == null) return;
             try {
                 double qty   = Double.parseDouble(tfQty.getText().trim());
                 double price = Double.parseDouble(tfPrice.getText().trim().replace(",", ""));
@@ -307,7 +316,15 @@ public class ReturnOrderPanel extends BorderPane {
         HBox addRow = new HBox(8, cbProd, tfQty, tfPrice, btnAddRow);
         addRow.setAlignment(Pos.CENTER_LEFT); addRow.setPadding(new Insets(6, 0, 0, 0));
 
-        HBox totalBar = new HBox(8, new Label("Tổng tiền trả:"), lblTotalVal);
+        GridPane summaryGrid = new GridPane();
+        summaryGrid.setHgap(12); summaryGrid.setVgap(4);
+        summaryGrid.setStyle("-fx-padding: 6 0 0 0;");
+        summaryGrid.addRow(0, new Label("Tiền hàng:"), lblSubVal);
+        summaryGrid.addRow(1, lblVATLabel, lblVATVal);
+        Label totTitle = new Label("Tổng tiền trả:");
+        totTitle.setFont(Font.font("System", FontWeight.BOLD, 13));
+        summaryGrid.addRow(2, totTitle, lblTotalVal);
+        HBox totalBar = new HBox(summaryGrid);
         totalBar.setAlignment(Pos.CENTER_RIGHT);
 
         Label lblError = new Label();
@@ -326,7 +343,7 @@ public class ReturnOrderPanel extends BorderPane {
         saveBtn.getStyleClass().add(Styles.ACCENT);
 
         saveBtn.addEventFilter(javafx.event.ActionEvent.ACTION, e -> {
-            if (cbCustomer.getValue() == null) {
+            if (ComboBoxHelper.safeGetValue(cbCustomer) == null) {
                 lblError.setText("⚠  Vui lòng chọn khách hàng!"); lblError.setVisible(true); lblError.setManaged(true); e.consume(); return;
             }
             if (details.isEmpty()) {
@@ -336,12 +353,16 @@ public class ReturnOrderPanel extends BorderPane {
 
         dialog.setResultConverter(btn -> {
             if (btn == btnSave) {
+                Customer cust = ComboBoxHelper.safeGetValue(cbCustomer);
                 ReturnOrder order = isEdit ? existing : new ReturnOrder();
                 order.setOrderNumber(orderNum);
-                order.setCustomerId(cbCustomer.getValue().getId());
-                order.setCustomerName(cbCustomer.getValue().getName());
+                order.setCustomerId(cust.getId());
+                order.setCustomerName(cust.getName());
                 order.setReturnDate(dpDate.getValue());
-                order.setTotalAmount(details.stream().mapToDouble(ReturnOrderDetail::getTotal).sum());
+                double sub = details.stream().mapToDouble(ReturnOrderDetail::getTotal).sum();
+                double vatRate = 10;
+                try { vatRate = Double.parseDouble(tfVatRate.getText().trim()); } catch (NumberFormatException ignored) {}
+                order.setTotalAmount(sub + sub * vatRate / 100);
                 order.setNote(tfNote.getText().trim());
                 order.setDetails(new java.util.ArrayList<>(details));
                 if (!isEdit) service.create(order);

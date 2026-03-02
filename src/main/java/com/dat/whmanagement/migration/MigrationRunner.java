@@ -14,6 +14,7 @@ public class MigrationRunner {
     public static void runMigration() {
         runScript("migration/V1__init.sql");
         runScript("migration/V2__pending_return.sql");
+        runScript("migration/V3__return_deduction_tracking.sql");
     }
 
     private static void runScript(String resourcePath) {

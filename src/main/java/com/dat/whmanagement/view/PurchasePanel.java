@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 
 import javafx.collections.transformation.FilteredList;
+import com.dat.whmanagement.util.ComboBoxHelper;
 
 public class PurchasePanel extends BorderPane {
 
@@ -78,7 +79,7 @@ public class PurchasePanel extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox actionBar = new HBox(10, spacer, search, btnAdd);
+        HBox actionBar = new HBox(10, search, spacer, btnAdd);
         actionBar.setAlignment(Pos.CENTER_LEFT);
         actionBar.setPadding(new Insets(16, 0, 8, 0));
 
@@ -232,23 +233,17 @@ public class PurchasePanel extends BorderPane {
         lblOrderNum.setFont(Font.font("System", FontWeight.BOLD, 14));
 
         List<Supplier> suppliers = supplierService.getAll();
-        ComboBox<Supplier> cbSupplier = new ComboBox<>(FXCollections.observableArrayList(suppliers));
-        cbSupplier.setPromptText("Chọn nhà cung cấp *");
+        ComboBox<Supplier> cbSupplier = new ComboBox<>();
+        cbSupplier.setPromptText("Gõ mã/tên NCC để tìm *");
         cbSupplier.setPrefWidth(260);
-        cbSupplier.setCellFactory(lv -> new ListCell<>() {
-            @Override protected void updateItem(Supplier s, boolean empty) {
-                super.updateItem(s, empty); setText(empty || s == null ? null : s.getName());
-            }
-        });
-        cbSupplier.setButtonCell(new ListCell<>() {
-            @Override protected void updateItem(Supplier s, boolean empty) {
-                super.updateItem(s, empty); setText(empty || s == null ? null : s.getName());
-            }
-        });
+        ComboBoxHelper.makeSearchable(cbSupplier, suppliers, s -> s.getCode() + " - " + s.getName());
 
         DatePicker dpDate = new DatePicker(isEdit ? existing.getOrderDate() : LocalDate.now());
         TextField tfNote = new TextField(isEdit && existing.getNote() != null ? existing.getNote() : "");
         tfNote.setPromptText("Ghi chú...");
+        TextField tfVatRate = new TextField("10");
+        tfVatRate.setPromptText("% thuế");
+        tfVatRate.setPrefWidth(80);
 
         if (isEdit) {
             suppliers.stream().filter(s -> s.getId() == existing.getSupplierId())
@@ -263,7 +258,8 @@ public class PurchasePanel extends BorderPane {
         headerGrid.addRow(0, new Label("Số phiếu:"), lblOrderNum);
         headerGrid.addRow(1, new Label("NCC *:"),     cbSupplier);
         headerGrid.addRow(2, new Label("Ngày nhập:"), dpDate);
-        headerGrid.addRow(3, new Label("Ghi chú:"),   tfNote);
+        headerGrid.addRow(3, new Label("Thuế (%):"),  tfVatRate);
+        headerGrid.addRow(4, new Label("Ghi chú:"),   tfNote);
 
         // Bảng chi tiết trong dialog
         ObservableList<PurchaseOrderDetail> details = FXCollections.observableArrayList();
@@ -292,15 +288,27 @@ public class PurchasePanel extends BorderPane {
         dTotal.setCellValueFactory(cd -> new SimpleStringProperty(CURRENCY.format(cd.getValue().getTotal()) + " ₫"));
         dTotal.setPrefWidth(120); dTotal.setStyle("-fx-alignment: CENTER_RIGHT; -fx-font-weight: bold;");
 
-        // Tổng tiền live
+        // Tổng tiền live (có thuế)
+        Label lblSubVal   = new Label("0 ₫");
+        Label lblVATVal   = new Label("0 ₫");
         Label lblTotalVal = new Label("0 ₫");
         lblTotalVal.setFont(Font.font("System", FontWeight.BOLD, 13));
         lblTotalVal.setStyle("-fx-text-fill: #1976D2;");
+        Label lblVATLabel = new Label("Thuế (10%):");
+
         Runnable refreshTotal = () -> {
-            double s = details.stream().mapToDouble(PurchaseOrderDetail::getTotal).sum();
-            lblTotalVal.setText(CURRENCY.format(s) + " ₫");
+            double sub = details.stream().mapToDouble(PurchaseOrderDetail::getTotal).sum();
+            double vatRate = 10;
+            try { vatRate = Double.parseDouble(tfVatRate.getText().trim()); } catch (NumberFormatException ignored) {}
+            double vat = sub * vatRate / 100;
+            double total = sub + vat;
+            lblSubVal.setText(CURRENCY.format(sub) + " ₫");
+            lblVATLabel.setText("Thuế (" + (int) vatRate + "%):");
+            lblVATVal.setText(CURRENCY.format(vat) + " ₫");
+            lblTotalVal.setText(CURRENCY.format(total) + " ₫");
         };
         refreshTotal.run();
+        tfVatRate.textProperty().addListener((obs, o, v) -> refreshTotal.run());
 
         TableColumn<PurchaseOrderDetail, Void> dDel = new TableColumn<>("");
         dDel.setPrefWidth(40);
@@ -317,26 +325,17 @@ public class PurchasePanel extends BorderPane {
 
         // Form thêm dòng
         List<Product> products = productService.getAll();
-        ComboBox<Product> cbProd = new ComboBox<>(FXCollections.observableArrayList(products));
-        cbProd.setPromptText("Chọn sản phẩm");
+        ComboBox<Product> cbProd = new ComboBox<>();
+        cbProd.setPromptText("Gõ mã/tên SP để tìm");
         cbProd.setPrefWidth(210);
-        cbProd.setCellFactory(lv -> new ListCell<>() {
-            @Override protected void updateItem(Product p, boolean empty) {
-                super.updateItem(p, empty); setText(empty || p == null ? null : p.getCode() + " - " + p.getName());
-            }
-        });
-        cbProd.setButtonCell(new ListCell<>() {
-            @Override protected void updateItem(Product p, boolean empty) {
-                super.updateItem(p, empty); setText(empty || p == null ? null : p.getCode() + " - " + p.getName());
-            }
-        });
+        ComboBoxHelper.makeSearchable(cbProd, products, p -> p.getCode() + " - " + p.getName());
 
         TextField tfQty   = new TextField(); tfQty.setPromptText("Số lượng"); tfQty.setPrefWidth(85);
         TextField tfPrice = new TextField(); tfPrice.setPromptText("Đơn giá"); tfPrice.setPrefWidth(110);
         Button btnAddRow = new Button("+ Thêm", new FontIcon(Material2OutlinedAL.ADD));
         btnAddRow.getStyleClass().addAll(Styles.BUTTON_OUTLINED, Styles.ACCENT);
         btnAddRow.setOnAction(e -> {
-            Product sel = cbProd.getValue(); if (sel == null) return;
+            Product sel = ComboBoxHelper.safeGetValue(cbProd); if (sel == null) return;
             try {
                 double qty   = Double.parseDouble(tfQty.getText().trim());
                 double price = Double.parseDouble(tfPrice.getText().trim().replace(",", ""));
@@ -354,9 +353,17 @@ public class PurchasePanel extends BorderPane {
         addRow.setAlignment(Pos.CENTER_LEFT);
         addRow.setPadding(new Insets(6, 0, 0, 0));
 
-        HBox totalBar = new HBox(8, new Label("Tổng tiền:"), lblTotalVal);
+        GridPane summaryGrid = new GridPane();
+        summaryGrid.setHgap(12); summaryGrid.setVgap(4);
+        summaryGrid.addRow(0, new Label("Tiền hàng:"), lblSubVal);
+        summaryGrid.addRow(1, lblVATLabel, lblVATVal);
+        summaryGrid.addRow(2, new Label("Tổng cộng:"), lblTotalVal);
+        summaryGrid.setStyle("-fx-padding: 6 0 0 0;");
+        ColumnConstraints sc1 = new ColumnConstraints(); sc1.setHalignment(javafx.geometry.HPos.RIGHT);
+        ColumnConstraints sc2 = new ColumnConstraints(); sc2.setHalignment(javafx.geometry.HPos.RIGHT);
+        summaryGrid.getColumnConstraints().addAll(sc1, sc2);
+        HBox totalBar = new HBox(summaryGrid);
         totalBar.setAlignment(Pos.CENTER_RIGHT);
-        ((Label) totalBar.getChildren().get(0)).setFont(Font.font("System", FontWeight.BOLD, 13));
 
         Label lblError = new Label();
         lblError.setStyle("-fx-text-fill: #e53935; -fx-font-size: 12px;");
@@ -375,7 +382,7 @@ public class PurchasePanel extends BorderPane {
         saveBtn.getStyleClass().add(Styles.ACCENT);
 
         saveBtn.addEventFilter(javafx.event.ActionEvent.ACTION, e -> {
-            if (cbSupplier.getValue() == null) {
+            if (ComboBoxHelper.safeGetValue(cbSupplier) == null) {
                 lblError.setText("⚠  Vui lòng chọn nhà cung cấp!");
                 lblError.setVisible(true); lblError.setManaged(true); e.consume(); return;
             }
@@ -387,13 +394,17 @@ public class PurchasePanel extends BorderPane {
 
         dialog.setResultConverter(btn -> {
             if (btn == btnSave) {
+                Supplier sup = ComboBoxHelper.safeGetValue(cbSupplier);
                 PurchaseOrder order = isEdit ? existing : new PurchaseOrder();
                 order.setOrderNumber(orderNum);
-                order.setSupplierId(cbSupplier.getValue().getId());
-                order.setSupplierName(cbSupplier.getValue().getName());
+                order.setSupplierId(sup.getId());
+                order.setSupplierName(sup.getName());
                 order.setOrderDate(dpDate.getValue());
                 order.setNote(tfNote.getText().trim());
-                order.setTotalAmount(details.stream().mapToDouble(PurchaseOrderDetail::getTotal).sum());
+                double sub = details.stream().mapToDouble(PurchaseOrderDetail::getTotal).sum();
+                double vatRate = 10;
+                try { vatRate = Double.parseDouble(tfVatRate.getText().trim()); } catch (NumberFormatException ignored) {}
+                order.setTotalAmount(sub + sub * vatRate / 100);
                 order.setDetails(new java.util.ArrayList<>(details));
                 if (!isEdit) orderService.create(order);
                 else orderService.update(order);

@@ -79,7 +79,7 @@ public class DebtPanel extends BorderPane {
         search.textProperty().addListener((obs, o, v) -> applyFilter(v));
 
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox actionBar = new HBox(10, tabCust, tabSupp, spacer, search);
+        HBox actionBar = new HBox(10, search, tabCust, tabSupp, spacer);
         actionBar.setAlignment(Pos.CENTER_LEFT);
         actionBar.setPadding(new Insets(14, 0, 8, 0));
 
@@ -88,7 +88,7 @@ public class DebtPanel extends BorderPane {
         lblTotalPaid      = new Label("0 ₫");
         lblTotalRemaining = new Label("0 ₫");
         HBox summaryBar = new HBox(16,
-                buildCard("Tổng phát sinh", lblTotalDebt, "#1976D2"),
+                buildCard("Tổng tiền", lblTotalDebt, "#1976D2"),
                 buildCard("Đã thanh toán",  lblTotalPaid, "#388E3C"),
                 buildCard("Còn nợ",         lblTotalRemaining, "#E53935"));
         summaryBar.setPadding(new Insets(0, 0, 8, 0));
@@ -131,7 +131,7 @@ public class DebtPanel extends BorderPane {
         TableColumn<DebtSummary, String>  colName  = col("Tên",          "targetName",  210);
         TableColumn<DebtSummary, String>  colPhone = col("Điện thoại",   "phone",       120);
 
-        TableColumn<DebtSummary, Double> colTotal = new TableColumn<>("Tổng phát sinh");
+        TableColumn<DebtSummary, Double> colTotal = new TableColumn<>("Tổng tiền");
         colTotal.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
         colTotal.setPrefWidth(140);
         colTotal.setCellFactory(c -> currencyCell("#333"));
@@ -261,36 +261,33 @@ public class DebtPanel extends BorderPane {
         colUnitPrice.setPrefWidth(115);
         colUnitPrice.setCellFactory(c -> currencyCell2("#333"));
 
-        TableColumn<OrderLine, Double> colLineTotal = new TableColumn<>("Thành tiền");
-        colLineTotal.setCellValueFactory(new PropertyValueFactory<>("lineTotal"));
-        colLineTotal.setPrefWidth(120);
-        colLineTotal.setCellFactory(c -> currencyCell2("#1976D2"));
-
-        TableColumn<OrderLine, Double> colOrderTotal = new TableColumn<>("Tổng phiếu");
-        colOrderTotal.setCellValueFactory(new PropertyValueFactory<>("orderTotal"));
-        colOrderTotal.setPrefWidth(130);
-        colOrderTotal.setCellFactory(c -> currencyCell2("#333"));
-
-        TableColumn<OrderLine, Double> colOrderPaid = new TableColumn<>("Đã trả");
-        colOrderPaid.setCellValueFactory(new PropertyValueFactory<>("orderPaid"));
-        colOrderPaid.setPrefWidth(120);
-        colOrderPaid.setCellFactory(c -> currencyCell2("#388E3C"));
-
-        TableColumn<OrderLine, Double> colOrderDebt = new TableColumn<>("Còn thiếu");
-        colOrderDebt.setCellValueFactory(new PropertyValueFactory<>("orderDebt"));
-        colOrderDebt.setPrefWidth(120);
-        colOrderDebt.setCellFactory(c -> new TableCell<>() {
+        TableColumn<OrderLine, Double> colReturnQty = new TableColumn<>("SL hàng trả");
+        colReturnQty.setCellValueFactory(new PropertyValueFactory<>("returnQuantity"));
+        colReturnQty.setPrefWidth(100);
+        colReturnQty.setCellFactory(c -> new TableCell<>() {
             @Override protected void updateItem(Double v, boolean empty) {
                 super.updateItem(v, empty);
                 if (empty || v == null) { setText(null); setStyle(""); return; }
-                setText(CURRENCY.format(v) + " ₫");
-                String clr = v > 0.005 ? "#E53935" : "#388E3C";
+                setText(String.format("%.2f", v));
+                String clr = v > 0.005 ? "#E53935" : "#555";
                 setStyle("-fx-alignment: CENTER_RIGHT; -fx-font-weight: bold; -fx-text-fill: " + clr + ";");
             }
         });
 
+        TableColumn<OrderLine, Double> colActualQty = new TableColumn<>("SL thực lấy");
+        colActualQty.setCellValueFactory(new PropertyValueFactory<>("actualQuantity"));
+        colActualQty.setPrefWidth(100);
+        colActualQty.setCellFactory(c -> new TableCell<>() {
+            @Override protected void updateItem(Double v, boolean empty) {
+                super.updateItem(v, empty);
+                if (empty || v == null) { setText(null); setStyle(""); return; }
+                setText(String.format("%.2f", v));
+                setStyle("-fx-alignment: CENTER_RIGHT; -fx-font-weight: bold; -fx-text-fill: #388E3C;");
+            }
+        });
+
         t.getColumns().addAll(colDate, colNum, colCode, colName, colUnit,
-                colQty, colUnitPrice, colLineTotal, colOrderTotal, colOrderPaid, colOrderDebt);
+                colQty, colUnitPrice, colReturnQty, colActualQty);
         return t;
     }
 

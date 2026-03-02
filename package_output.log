@@ -1,0 +1,24 @@
+============================================
+ BUOC 1: Compile va dong goi fat JARs
+============================================
+[OK] Maven build thanh cong.
+
+============================================
+ BUOC 2: Dong goi QuanLyKho.exe (app chinh)
+============================================
+[OK] QuanLyKho.exe da tao thanh cong.
+
+============================================
+ BUOC 3: Dong goi GenLicenseKey.exe (tool tao key)
+============================================
+[OK] GenLicenseKey.exe da tao thanh cong.
+
+============================================
+ HOAN THANH! Ket qua o thu muc:
+ C:\Users\utube\IdeaProjects\whmanagement\dist
+============================================
+
+ QuanLyKho\QuanLyKho.exe    - App chinh cho khach hang
+ GenLicenseKey\GenLicenseKey.exe - Tool tao key (chi danh cho ban)
+
+Press any key to continue . . . 

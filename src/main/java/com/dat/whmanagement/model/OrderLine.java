@@ -4,7 +4,7 @@ import java.time.LocalDate;
 
 /**
  * Một dòng đơn hàng (nhập hoặc xuất) dùng trong panel Thanh toán:
- * hiển thị ngày, số phiếu, sản phẩm, SL, đơn giá, thành tiền, đã trả, còn nợ
+ * hiển thị ngày, số phiếu, sản phẩm, SL, đơn giá, thành tiền, SL trả, SL thực lấy
  */
 public class OrderLine {
 
@@ -17,10 +17,9 @@ public class OrderLine {
     private String    unit;
     private double    quantity;
     private double    unitPrice;
-    private double    lineTotal;      // SL × đơn giá (chưa VAT cho sale)
-    private double    orderTotal;     // Tổng phiếu (đã VAT cho sale)
-    private double    orderPaid;      // Đã thanh toán cho cả phiếu
-    private double    orderDebt;      // Còn nợ = orderTotal - orderPaid
+    private double    lineTotal;       // SL × đơn giá
+    private double    returnQuantity;  // SL hàng trả lại
+    private double    actualQuantity;  // SL thực khách lấy = quantity - returnQuantity
 
     public OrderLine() {}
 
@@ -54,13 +53,9 @@ public class OrderLine {
     public double    getLineTotal()               { return lineTotal;    }
     public void      setLineTotal(double t)       { this.lineTotal = t;  }
 
-    public double    getOrderTotal()              { return orderTotal;   }
-    public void      setOrderTotal(double t)      { this.orderTotal = t; }
+    public double    getReturnQuantity()           { return returnQuantity;    }
+    public void      setReturnQuantity(double q)   { this.returnQuantity = q;  }
 
-    public double    getOrderPaid()               { return orderPaid;    }
-    public void      setOrderPaid(double p)       { this.orderPaid = p;  }
-
-    public double    getOrderDebt()               { return orderDebt;    }
-    public void      setOrderDebt(double d)       { this.orderDebt = d;  }
+    public double    getActualQuantity()           { return actualQuantity;    }
+    public void      setActualQuantity(double q)   { this.actualQuantity = q;  }
 }
-

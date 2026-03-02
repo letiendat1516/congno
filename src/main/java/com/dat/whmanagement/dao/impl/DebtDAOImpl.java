@@ -137,19 +137,22 @@ public class DebtDAOImpl implements DebtDAO {
         List<OrderLine> list = new ArrayList<>();
 
         if ("CUSTOMER".equals(targetType)) {
-            // Lấy từ sales_order_details JOIN sales_orders JOIN products
+            // Lấy từ sales_order_details JOIN sales_orders JOIN products + SL trả hàng
             String sql = """
                     SELECT so.id        AS order_id,
                            so.order_number,
                            so.order_date,
-                           so.total_amount  AS order_total,
-                           so.paid_amount   AS order_paid,
                            p.code           AS product_code,
                            p.name           AS product_name,
                            p.unit,
                            sod.quantity,
                            sod.unit_price,
-                           sod.total        AS line_total
+                           sod.total        AS line_total,
+                           COALESCE((SELECT SUM(rod.quantity)
+                                     FROM return_order_details rod
+                                     JOIN return_orders ro ON ro.id = rod.return_order_id
+                                     WHERE ro.customer_id = so.customer_id
+                                       AND rod.product_id = sod.product_id), 0) AS return_qty
                     FROM sales_orders so
                     JOIN sales_order_details sod ON sod.sales_order_id = so.id
                     JOIN products p              ON p.id = sod.product_id
@@ -173,9 +176,9 @@ public class DebtDAOImpl implements DebtDAO {
                         ol.setQuantity(rs.getDouble("quantity"));
                         ol.setUnitPrice(rs.getDouble("unit_price"));
                         ol.setLineTotal(rs.getDouble("line_total"));
-                        ol.setOrderTotal(rs.getDouble("order_total"));
-                        ol.setOrderPaid(rs.getDouble("order_paid"));
-                        ol.setOrderDebt(ol.getOrderTotal() - ol.getOrderPaid());
+                        double retQty = rs.getDouble("return_qty");
+                        ol.setReturnQuantity(retQty);
+                        ol.setActualQuantity(ol.getQuantity() - retQty);
                         list.add(ol);
                     }
                 }
@@ -188,8 +191,6 @@ public class DebtDAOImpl implements DebtDAO {
                     SELECT po.id        AS order_id,
                            po.order_number,
                            po.order_date,
-                           po.total_amount  AS order_total,
-                           0.0             AS order_paid,
                            p.code          AS product_code,
                            p.name          AS product_name,
                            p.unit,
@@ -219,9 +220,8 @@ public class DebtDAOImpl implements DebtDAO {
                         ol.setQuantity(rs.getDouble("quantity"));
                         ol.setUnitPrice(rs.getDouble("unit_price"));
                         ol.setLineTotal(rs.getDouble("line_total"));
-                        ol.setOrderTotal(rs.getDouble("order_total"));
-                        ol.setOrderPaid(rs.getDouble("order_paid"));
-                        ol.setOrderDebt(ol.getOrderTotal() - ol.getOrderPaid());
+                        ol.setReturnQuantity(0);
+                        ol.setActualQuantity(ol.getQuantity());
                         list.add(ol);
                     }
                 }

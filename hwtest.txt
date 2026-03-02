@@ -1,0 +1,121 @@
+﻿BFEBFBFF000A0652
+N310NRCX00C0C5MB
+powershell : .PhysicalAdapter : The term '.PhysicalAdapter' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the 
+spelling of 
+At line:1 char:1
++ powershell -NoProfile -Command "(Get-CimInstance Win32_NetworkAdapter ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (.PhysicalAdapte...he spelling of :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:55
++ ... nstance Win32_NetworkAdapter | Where-Object {.PhysicalAdapter -eq Tru ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (.PhysicalAdapter:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+.PhysicalAdapter : The term '.PhysicalAdapter' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of 
+the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:55
++ ... nstance Win32_NetworkAdapter | Where-Object {.PhysicalAdapter -eq Tru ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (.PhysicalAdapter:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+.PhysicalAdapter : The term '.PhysicalAdapter' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of 
+the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:55
++ ... nstance Win32_NetworkAdapter | Where-Object {.PhysicalAdapter -eq Tru ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (.PhysicalAdapter:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+.PhysicalAdapter : The term '.PhysicalAdapter' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of 
+the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:55
++ ... nstance Win32_NetworkAdapter | Where-Object {.PhysicalAdapter -eq Tru ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (.PhysicalAdapter:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+.PhysicalAdapter : The term '.PhysicalAdapter' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of 
+the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:55
++ ... nstance Win32_NetworkAdapter | Where-Object {.PhysicalAdapter -eq Tru ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (.PhysicalAdapter:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+.PhysicalAdapter : The term '.PhysicalAdapter' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of 
+the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:55
++ ... nstance Win32_NetworkAdapter | Where-Object {.PhysicalAdapter -eq Tru ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (.PhysicalAdapter:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+.PhysicalAdapter : The term '.PhysicalAdapter' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of 
+the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:55
++ ... nstance Win32_NetworkAdapter | Where-Object {.PhysicalAdapter -eq Tru ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (.PhysicalAdapter:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+.PhysicalAdapter : The term '.PhysicalAdapter' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of 
+the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:55
++ ... nstance Win32_NetworkAdapter | Where-Object {.PhysicalAdapter -eq Tru ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (.PhysicalAdapter:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+.PhysicalAdapter : The term '.PhysicalAdapter' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of 
+the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:55
++ ... nstance Win32_NetworkAdapter | Where-Object {.PhysicalAdapter -eq Tru ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (.PhysicalAdapter:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+.PhysicalAdapter : The term '.PhysicalAdapter' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of 
+the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:55
++ ... nstance Win32_NetworkAdapter | Where-Object {.PhysicalAdapter -eq Tru ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (.PhysicalAdapter:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+.PhysicalAdapter : The term '.PhysicalAdapter' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of 
+the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:55
++ ... nstance Win32_NetworkAdapter | Where-Object {.PhysicalAdapter -eq Tru ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (.PhysicalAdapter:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+.PhysicalAdapter : The term '.PhysicalAdapter' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of 
+the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:55
++ ... nstance Win32_NetworkAdapter | Where-Object {.PhysicalAdapter -eq Tru ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (.PhysicalAdapter:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+.PhysicalAdapter : The term '.PhysicalAdapter' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of 
+the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:55
++ ... nstance Win32_NetworkAdapter | Where-Object {.PhysicalAdapter -eq Tru ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (.PhysicalAdapter:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+.PhysicalAdapter : The term '.PhysicalAdapter' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of 
+the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:55
++ ... nstance Win32_NetworkAdapter | Where-Object {.PhysicalAdapter -eq Tru ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (.PhysicalAdapter:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
