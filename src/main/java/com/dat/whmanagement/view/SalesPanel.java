@@ -251,7 +251,9 @@ public class SalesPanel extends BorderPane {
         ComboBox<Customer> cbCustomer = new ComboBox<>();
         cbCustomer.setPromptText("Gõ mã/tên KH để tìm *");
         cbCustomer.setPrefWidth(260);
-        ComboBoxHelper.makeSearchable(cbCustomer, customers, c -> c.getName());
+        ComboBoxHelper.makeSearchable(cbCustomer, customers,
+                c -> c.getCode() + " - " + c.getName(),
+                c -> (c.getCode() + " " + c.getName()).toLowerCase());
 
         DatePicker dpDate = new DatePicker(isEdit ? existing.getOrderDate() : LocalDate.now());
         TextField tfPaid  = new TextField(isEdit ? String.valueOf((long) existing.getPaidAmount()) : "0");

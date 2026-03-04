@@ -132,10 +132,6 @@ public class StockPanel extends BorderPane {
         colBuy.setPrefWidth(110);
         colBuy.setCellFactory(col -> currencyCell());
 
-        TableColumn<StockItem, Double> colSell = new TableColumn<>("Giá bán");
-        colSell.setCellValueFactory(new PropertyValueFactory<>("sellPrice"));
-        colSell.setPrefWidth(110);
-        colSell.setCellFactory(col -> currencyCell());
 
         TableColumn<StockItem, Double> colValue = new TableColumn<>("Giá trị tồn");
         colValue.setCellValueFactory(new PropertyValueFactory<>("stockValue"));
@@ -152,7 +148,7 @@ public class StockPanel extends BorderPane {
             }
         });
 
-        table.getColumns().addAll(colId, colCode, colName, colUnit, colStock, colBuy, colSell, colValue);
+        table.getColumns().addAll(colId, colCode, colName, colUnit, colStock, colBuy, colValue);
         filteredList = new FilteredList<>(masterList, p -> true);
         table.setItems(filteredList);
         BorderPane.setMargin(table, new Insets(8, 0, 0, 0));

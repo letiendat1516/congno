@@ -23,7 +23,7 @@ public class PurchaseOrderDAOImpl implements PurchaseOrderDAO {
                 INSERT INTO purchase_order_details(purchase_order_id, product_id, quantity, unit_price, total)
                 VALUES (?,?,?,?,?)
                 """;
-        String sqlStock = "UPDATE products SET stock = stock + ? WHERE id = ?";
+        String sqlStock = "UPDATE products SET stock = stock + ?, buy_price = ? WHERE id = ?";
         String sqlMovement = """
                 INSERT INTO stock_movements(product_id, movement_date, reference_type, reference_id, quantity, unit_price, note)
                 VALUES (?,?,?,?,?,?,?)
@@ -60,10 +60,11 @@ public class PurchaseOrderDAOImpl implements PurchaseOrderDAO {
                     ps.setDouble(5, d.getTotal());
                     ps.executeUpdate();
                 }
-                // Update stock
+                // Update stock + buy_price
                 try (PreparedStatement ps = conn.prepareStatement(sqlStock)) {
                     ps.setDouble(1, d.getQuantity());
-                    ps.setInt(2, d.getProductId());
+                    ps.setDouble(2, d.getUnitPrice());
+                    ps.setInt(3, d.getProductId());
                     ps.executeUpdate();
                 }
                 // Stock movement
@@ -201,13 +202,14 @@ public class PurchaseOrderDAOImpl implements PurchaseOrderDAO {
 
     @Override
     public void update(PurchaseOrder order) {
-        String sqlHeader      = "UPDATE purchase_orders SET supplier_id=?, order_date=?, total_amount=?, note=? WHERE id=?";
-        String sqlOldDetails  = "SELECT product_id, quantity FROM purchase_order_details WHERE purchase_order_id=?";
-        String sqlDelDetails  = "DELETE FROM purchase_order_details WHERE purchase_order_id=?";
-        String sqlDelMovement = "DELETE FROM stock_movements WHERE reference_type='PURCHASE' AND reference_id=?";
-        String sqlStock       = "UPDATE products SET stock = stock + ? WHERE id = ?";
-        String sqlInsDetail   = "INSERT INTO purchase_order_details(purchase_order_id, product_id, quantity, unit_price, total) VALUES (?,?,?,?,?)";
-        String sqlInsMovement = "INSERT INTO stock_movements(product_id, movement_date, reference_type, reference_id, quantity, unit_price, note) VALUES (?,?,?,?,?,?,?)";
+        String sqlHeader       = "UPDATE purchase_orders SET supplier_id=?, order_date=?, total_amount=?, note=? WHERE id=?";
+        String sqlOldDetails   = "SELECT product_id, quantity FROM purchase_order_details WHERE purchase_order_id=?";
+        String sqlDelDetails   = "DELETE FROM purchase_order_details WHERE purchase_order_id=?";
+        String sqlDelMovement  = "DELETE FROM stock_movements WHERE reference_type='PURCHASE' AND reference_id=?";
+        String sqlReverseStock = "UPDATE products SET stock = stock + ? WHERE id = ?";
+        String sqlAddStock     = "UPDATE products SET stock = stock + ?, buy_price = ? WHERE id = ?";
+        String sqlInsDetail    = "INSERT INTO purchase_order_details(purchase_order_id, product_id, quantity, unit_price, total) VALUES (?,?,?,?,?)";
+        String sqlInsMovement  = "INSERT INTO stock_movements(product_id, movement_date, reference_type, reference_id, quantity, unit_price, note) VALUES (?,?,?,?,?,?,?)";
 
         Connection conn = null;
         try {
@@ -219,7 +221,7 @@ public class PurchaseOrderDAOImpl implements PurchaseOrderDAO {
                 ps.setInt(1, order.getId());
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
-                        try (PreparedStatement ps2 = conn.prepareStatement(sqlStock)) {
+                        try (PreparedStatement ps2 = conn.prepareStatement(sqlReverseStock)) {
                             ps2.setDouble(1, -rs.getDouble("quantity")); // trừ lại
                             ps2.setInt(2, rs.getInt("product_id"));
                             ps2.executeUpdate();
@@ -242,15 +244,18 @@ public class PurchaseOrderDAOImpl implements PurchaseOrderDAO {
                 ps.executeUpdate();
             }
 
-            // 4. Insert new details + update stock + movements
+            // 4. Insert new details + update stock + buy_price + movements
             for (PurchaseOrderDetail d : order.getDetails()) {
                 try (PreparedStatement ps = conn.prepareStatement(sqlInsDetail)) {
                     ps.setInt(1, order.getId()); ps.setInt(2, d.getProductId());
                     ps.setDouble(3, d.getQuantity()); ps.setDouble(4, d.getUnitPrice()); ps.setDouble(5, d.getTotal());
                     ps.executeUpdate();
                 }
-                try (PreparedStatement ps = conn.prepareStatement(sqlStock)) {
-                    ps.setDouble(1, d.getQuantity()); ps.setInt(2, d.getProductId()); ps.executeUpdate();
+                try (PreparedStatement ps = conn.prepareStatement(sqlAddStock)) {
+                    ps.setDouble(1, d.getQuantity());
+                    ps.setDouble(2, d.getUnitPrice());
+                    ps.setInt(3, d.getProductId());
+                    ps.executeUpdate();
                 }
                 try (PreparedStatement ps = conn.prepareStatement(sqlInsMovement)) {
                     ps.setInt(1, d.getProductId()); ps.setString(2, order.getOrderDate().toString());

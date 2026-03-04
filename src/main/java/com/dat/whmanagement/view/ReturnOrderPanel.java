@@ -209,7 +209,9 @@ public class ReturnOrderPanel extends BorderPane {
         List<Customer> customers = customerService.getAll();
         ComboBox<Customer> cbCustomer = new ComboBox<>();
         cbCustomer.setPromptText("Gõ mã/tên KH để tìm *"); cbCustomer.setPrefWidth(260);
-        ComboBoxHelper.makeSearchable(cbCustomer, customers, c -> c.getName());
+        ComboBoxHelper.makeSearchable(cbCustomer, customers,
+                c -> c.getCode() + " - " + c.getName(),
+                c -> (c.getCode() + " " + c.getName()).toLowerCase());
 
         DatePicker dpDate = new DatePicker(isEdit ? existing.getReturnDate() : LocalDate.now());
         TextField  tfNote = new TextField(isEdit && existing.getNote() != null ? existing.getNote() : "");

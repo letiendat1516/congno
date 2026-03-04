@@ -39,12 +39,22 @@ public class ComboBoxHelper {
     }
 
     /**
-     * Làm cho ComboBox có thể gõ để tìm kiếm.
-     * @param cb        ComboBox cần xử lý
-     * @param allItems  Danh sách gốc đầy đủ
-     * @param display   Hàm hiển thị text cho mỗi item (dùng để filter + hiển thị)
+     * Làm cho ComboBox có thể gõ để tìm kiếm (chỉ dùng display để filter).
      */
     public static <T> void makeSearchable(ComboBox<T> cb, List<T> allItems, Function<T, String> display) {
+        makeSearchable(cb, allItems, display, display);
+    }
+
+    /**
+     * Làm cho ComboBox có thể gõ để tìm kiếm.
+     * @param cb          ComboBox cần xử lý
+     * @param allItems    Danh sách gốc đầy đủ
+     * @param display     Hàm hiển thị text cho mỗi item
+     * @param searchText  Hàm trả về text dùng để filter (có thể chứa nhiều trường hơn display)
+     */
+    public static <T> void makeSearchable(ComboBox<T> cb, List<T> allItems,
+                                           Function<T, String> display,
+                                           Function<T, String> searchText) {
         cb.setItems(FXCollections.observableArrayList(allItems));
         cb.setEditable(true);
 
@@ -59,14 +69,16 @@ public class ComboBoxHelper {
             public T fromString(String text) {
                 if (text == null || text.isBlank()) return null;
                 String kw = text.trim().toLowerCase();
-                // Tìm item khớp chính xác với text hiển thị
+                // Tìm item khớp chính xác với text hiển thị hoặc text tìm kiếm
                 for (T item : allItems) {
-                    if (display.apply(item).equalsIgnoreCase(kw)
-                            || display.apply(item).toLowerCase().contains(kw)) {
+                    String d = display.apply(item).toLowerCase();
+                    String s = searchText.apply(item).toLowerCase();
+                    if (d.equalsIgnoreCase(kw) || d.contains(kw)
+                            || s.contains(kw)) {
                         return item;
                     }
                 }
-                return null; // Không tìm thấy → trả null (không ép String thành T)
+                return null;
             }
         });
 
@@ -82,7 +94,7 @@ public class ComboBoxHelper {
         // Flag chống loop khi đang cập nhật từ code
         final boolean[] updating = {false};
 
-        // Filter khi gõ
+        // Filter khi gõ — tìm theo cả display và searchText
         cb.getEditor().textProperty().addListener((obs, oldVal, newVal) -> {
             if (updating[0]) return;
 
@@ -94,7 +106,9 @@ public class ComboBoxHelper {
             String kw = newVal == null ? "" : newVal.trim().toLowerCase();
             ObservableList<T> filtered = FXCollections.observableArrayList();
             for (T item : allItems) {
-                if (kw.isEmpty() || display.apply(item).toLowerCase().contains(kw)) {
+                if (kw.isEmpty()
+                        || display.apply(item).toLowerCase().contains(kw)
+                        || searchText.apply(item).toLowerCase().contains(kw)) {
                     filtered.add(item);
                 }
             }
@@ -113,7 +127,7 @@ public class ComboBoxHelper {
             if (updating[0]) return;
             if (newVal == null) return;
             // Guard: JavaFX đôi khi truyền String thay vì T khi editable
-            if (newVal instanceof String) return; // bỏ qua nếu JavaFX gán String thay vì T
+            if (newVal instanceof String) return;
             try {
                 String text = display.apply(newVal);
                 updating[0] = true;

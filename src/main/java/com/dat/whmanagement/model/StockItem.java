@@ -13,20 +13,18 @@ public class StockItem {
     private String unit;
     private double stock;
     private double buyPrice;
-    private double sellPrice;
     private LocalDateTime lastUpdated;
 
     public StockItem() {}
 
     public StockItem(int productId, String productCode, String productName,
-                     String unit, double stock, double buyPrice, double sellPrice) {
+                     String unit, double stock, double buyPrice) {
         this.productId = productId;
         this.productCode = productCode;
         this.productName = productName;
         this.unit = unit;
         this.stock = stock;
         this.buyPrice = buyPrice;
-        this.sellPrice = sellPrice;
     }
 
     public int getProductId() { return productId; }
@@ -47,8 +45,6 @@ public class StockItem {
     public double getBuyPrice() { return buyPrice; }
     public void setBuyPrice(double buyPrice) { this.buyPrice = buyPrice; }
 
-    public double getSellPrice() { return sellPrice; }
-    public void setSellPrice(double sellPrice) { this.sellPrice = sellPrice; }
 
     public double getStockValue() { return stock * buyPrice; }
 

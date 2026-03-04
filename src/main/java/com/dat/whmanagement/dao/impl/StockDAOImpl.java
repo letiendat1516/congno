@@ -13,9 +13,16 @@ public class StockDAOImpl implements StockDAO {
     @Override
     public List<StockItem> findAll() {
         String sql = """
-                SELECT id, code, name, unit, stock, buy_price, sell_price
-                FROM products
-                ORDER BY name ASC
+                SELECT p.id, p.code, p.name, p.unit, p.stock,
+                       COALESCE(
+                           (SELECT pod.unit_price
+                            FROM purchase_order_details pod
+                            WHERE pod.product_id = p.id
+                            ORDER BY pod.id DESC LIMIT 1),
+                           p.buy_price, 0
+                       ) AS buy_price
+                FROM products p
+                ORDER BY p.name ASC
                 """;
         List<StockItem> list = new ArrayList<>();
         try (Connection conn = DatabaseConfig.getConnection();
@@ -28,8 +35,7 @@ public class StockDAOImpl implements StockDAO {
                         rs.getString("name"),
                         rs.getString("unit"),
                         rs.getDouble("stock"),
-                        rs.getDouble("buy_price"),
-                        rs.getDouble("sell_price")
+                        rs.getDouble("buy_price")
                 ));
             }
         } catch (SQLException e) {
