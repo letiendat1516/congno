@@ -56,7 +56,8 @@ public class MainController extends BorderPane {
                 buildMenuItem("Đơn đặt hàng", new FontIcon(Material2OutlinedAL.ASSIGNMENT),          "pending"),
                 buildMenuItem("Trả hàng",     new FontIcon(Material2OutlinedAL.ASSIGNMENT_RETURN),   "returns"),
                 buildMenuItem("Tồn kho",      new FontIcon(Material2OutlinedMZ.STORAGE),            "stock"),
-                buildMenuItem("Thanh toán",   new FontIcon(Material2OutlinedMZ.PAYMENT),            "payments")
+                buildMenuItem("Thanh toán",   new FontIcon(Material2OutlinedMZ.PAYMENT),            "payments"),
+                buildMenuItem("Hóa đơn",     new FontIcon(Material2OutlinedAL.ARTICLE),             "invoices")
         );
 
         VBox.setVgrow(menu, Priority.ALWAYS);
@@ -177,6 +178,7 @@ public class MainController extends BorderPane {
             case "returns"   -> contentArea.setCenter(new ReturnOrderPanel());
             case "stock"     -> contentArea.setCenter(new StockPanel());
             case "payments"  -> contentArea.setCenter(new DebtPanel());
+            case "invoices"  -> contentArea.setCenter(new InvoicePanel());
             default          -> contentArea.setCenter(buildPlaceholder(target));
         }
     }

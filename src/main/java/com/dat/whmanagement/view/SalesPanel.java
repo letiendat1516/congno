@@ -3,9 +3,11 @@ package com.dat.whmanagement.view;
 import atlantafx.base.theme.Styles;
 import com.dat.whmanagement.model.*;
 import com.dat.whmanagement.service.CustomerService;
+import com.dat.whmanagement.service.InvoiceService;
 import com.dat.whmanagement.service.ProductService;
 import com.dat.whmanagement.service.SalesOrderService;
 import com.dat.whmanagement.service.impl.CustomerServiceImpl;
+import com.dat.whmanagement.service.impl.InvoiceServiceImpl;
 import com.dat.whmanagement.service.impl.SalesOrderServiceImpl;
 import com.dat.whmanagement.dao.impl.ProductDAOImpl;
 import com.dat.whmanagement.dao.impl.ProductServiceImpl;
@@ -25,6 +27,7 @@ import org.kordamp.ikonli.material2.Material2OutlinedAL;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -39,6 +42,7 @@ public class SalesPanel extends BorderPane {
     private final SalesOrderService orderService  = new SalesOrderServiceImpl();
     private final CustomerService customerService = new CustomerServiceImpl();
     private final ProductService productService   = new ProductServiceImpl(new ProductDAOImpl());
+    private final InvoiceService invoiceService    = new InvoiceServiceImpl();
 
     private final ObservableList<SalesOrder>       masterList = FXCollections.observableArrayList();
     private final ObservableList<SalesOrderDetail> detailList = FXCollections.observableArrayList();
@@ -436,6 +440,7 @@ public class SalesPanel extends BorderPane {
                 double sub = details.stream().mapToDouble(SalesOrderDetail::getTotal).sum();
                 double vatRate = 10;
                 try { vatRate = Double.parseDouble(tfVatRate.getText().trim()); } catch (NumberFormatException ignored) {}
+                final double finalVatRate = vatRate;
                 double totalWithVAT = Math.round(sub * (1 + vatRate / 100) * 100.0) / 100.0;
                 double paid = 0;
                 try { paid = Double.parseDouble(tfPaid.getText().trim().replace(",", "")); }
@@ -452,6 +457,8 @@ public class SalesPanel extends BorderPane {
                 if (!isEdit) {
                     try {
                         orderService.create(order);
+                        // ── Tự động tạo hóa đơn từ phiếu xuất ──
+                        createInvoiceFromSalesOrder(order, cust, finalVatRate);
                     } catch (IllegalStateException ise) {
                         lblError.setText("⚠  " + ise.getMessage());
                         lblError.setVisible(true); lblError.setManaged(true);
@@ -472,6 +479,57 @@ public class SalesPanel extends BorderPane {
         });
 
         dialog.showAndWait().ifPresent(o -> loadData());
+    }
+
+    // ─────────────────────────────────────────
+    // TỰ ĐỘNG TẠO HÓA ĐƠN KHI XUẤT HÀNG
+    // ─────────────────────────────────────────
+    private void createInvoiceFromSalesOrder(SalesOrder order, Customer cust, double vatRate) {
+        try {
+            Invoice invoice = new Invoice();
+            invoice.setInvoiceNo(invoiceService.generateNextInvoiceNumber());
+            invoice.setInvoiceFormNumber("01GTKT0/001");
+            invoice.setInvoiceSymbol("AA/22E");
+            invoice.setIssueDate(order.getOrderDate());
+            invoice.setStatus(Invoice.Status.DRAFT);
+            invoice.setSalesOrderId(order.getId() != null ? order.getId() : 0);
+            invoice.setCustomerId(cust.getId());
+
+            // Thông tin người bán (mặc định)
+            invoice.setSellerName("ĐẠI LÝ CẤP I XUÂN TRƯỜNG – CÔNG TY CỔ PHẦN VIGLACERA HẠ LONG GIẾNG ĐÁY - QUẢNG NINH");
+            invoice.setSellerAddress("Cây xăng Bồ Sơn, gần bệnh viện đa khoa tỉnh Bắc Ninh");
+            invoice.setSellerPhone("0977.556.638 – 0972.070.186 – 0925.234.898");
+            invoice.setSellerBankAccount("3866 1616 8666 tại NH Quân Đội (MB) - Chủ TK: Nguyễn Thị Hiến");
+
+            // Thông tin người mua (từ khách hàng)
+            invoice.setBuyerName(cust.getName());
+            invoice.setBuyerAddress(cust.getAddress() != null ? cust.getAddress() : "");
+            invoice.setPaymentMethod("Tiền mặt");
+
+            invoice.setVatRate(vatRate);
+            invoice.setNotes("Tự động tạo từ phiếu xuất " + order.getOrderNumber());
+
+            // Chuyển SalesOrderDetail → InvoiceItem
+            List<InvoiceItem> invoiceItems = new ArrayList<>();
+            for (SalesOrderDetail d : order.getDetails()) {
+                InvoiceItem item = new InvoiceItem();
+                item.setProductId(d.getProductId());
+                item.setName(d.getProductName());
+                item.setUnit(d.getUnit() != null ? d.getUnit() : "");
+                item.setQuantity((int) d.getQuantity());
+                item.setUnitPrice(d.getUnitPrice());
+                item.setTotalPrice(d.getTotal());
+                item.setDiscount(0);
+                invoiceItems.add(item);
+            }
+
+            invoiceService.saveInvoiceWithItems(invoice, invoiceItems);
+            System.out.println("Tự động tạo hóa đơn " + invoice.getInvoiceNumber()
+                    + " từ phiếu xuất " + order.getOrderNumber());
+        } catch (Exception e) {
+            System.out.println("Lỗi tự động tạo hóa đơn: " + e.getMessage());
+            // Không throw — phiếu xuất đã lưu thành công, chỉ hóa đơn lỗi
+        }
     }
 
     private void confirmDelete(SalesOrder order) {

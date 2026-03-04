@@ -14,6 +14,7 @@ public class PendingOrder {
     private LocalDate orderDate;
     private LocalDate expectedDate;
     private double    totalAmount;
+    private double    vatRate = 10;   // % thuế, mặc định 10
     private String    status;        // PENDING | EXPORTED | CANCELLED
     private String    note;
     private List<PendingOrderDetail> details = new ArrayList<>();
@@ -40,6 +41,9 @@ public class PendingOrder {
 
     public double    getTotalAmount()                  { return totalAmount; }
     public void      setTotalAmount(double t)          { this.totalAmount = t; }
+
+    public double    getVatRate()                      { return vatRate; }
+    public void      setVatRate(double v)              { this.vatRate = v; }
 
     public String    getStatus()                       { return status; }
     public void      setStatus(String s)               { this.status = s; }

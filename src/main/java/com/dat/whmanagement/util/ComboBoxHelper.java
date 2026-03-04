@@ -113,6 +113,7 @@ public class ComboBoxHelper {
             if (updating[0]) return;
             if (newVal == null) return;
             // Guard: JavaFX đôi khi truyền String thay vì T khi editable
+            if (newVal instanceof String) return; // bỏ qua nếu JavaFX gán String thay vì T
             try {
                 String text = display.apply(newVal);
                 updating[0] = true;

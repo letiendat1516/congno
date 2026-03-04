@@ -173,7 +173,7 @@ public class CustomerPanel extends BorderPane {
         ColumnConstraints c1 = new ColumnConstraints(80);
         ColumnConstraints c2 = new ColumnConstraints(); c2.setHgrow(Priority.ALWAYS);
         grid.getColumnConstraints().addAll(c1, c2);
-        grid.addRow(0, new Label("Mã KH"),    tfCode);
+        grid.addRow(0, new Label("Mã KH *"),    tfCode);
         grid.addRow(1, new Label("Tên *"),     tfName);
         grid.addRow(2, new Label("SĐT"),       tfPhone);
         grid.addRow(3, new Label("Địa chỉ"),   tfAddress);

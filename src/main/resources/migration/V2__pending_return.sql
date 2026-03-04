@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS pending_orders (
     order_date   TEXT    NOT NULL,
     expected_date TEXT,
     total_amount REAL    NOT NULL DEFAULT 0,
+    vat_rate     REAL    NOT NULL DEFAULT 10,
     status       TEXT    NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','EXPORTED','CANCELLED')),
     note         TEXT,
     FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT
@@ -39,6 +40,8 @@ CREATE TABLE IF NOT EXISTS return_orders (
     return_date  TEXT    NOT NULL,
     total_amount REAL    NOT NULL DEFAULT 0,
     note         TEXT,
+    deducted_from_total REAL NOT NULL DEFAULT 0,
+    deducted_from_paid  REAL NOT NULL DEFAULT 0,
     FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT
 );
 

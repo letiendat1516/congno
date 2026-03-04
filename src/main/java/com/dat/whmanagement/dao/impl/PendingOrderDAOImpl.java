@@ -17,8 +17,8 @@ public class PendingOrderDAOImpl implements PendingOrderDAO {
     public void insert(PendingOrder order) {
         String sqlOrder = """
                 INSERT INTO pending_orders(order_number, customer_id, customer_name,
-                    order_date, expected_date, total_amount, status, note)
-                VALUES (?,?,?,?,?,?,?,?)
+                    order_date, expected_date, total_amount, vat_rate, status, note)
+                VALUES (?,?,?,?,?,?,?,?,?)
                 """;
         String sqlDetail = """
                 INSERT INTO pending_order_details(pending_order_id, product_id, quantity, unit_price, total)
@@ -37,8 +37,9 @@ public class PendingOrderDAOImpl implements PendingOrderDAO {
                 ps.setString(4, order.getOrderDate().toString());
                 ps.setString(5, order.getExpectedDate() != null ? order.getExpectedDate().toString() : null);
                 ps.setDouble(6, order.getTotalAmount());
-                ps.setString(7, order.getStatus() != null ? order.getStatus() : "PENDING");
-                ps.setString(8, order.getNote());
+                ps.setDouble(7, order.getVatRate());
+                ps.setString(8, order.getStatus() != null ? order.getStatus() : "PENDING");
+                ps.setString(9, order.getNote());
                 ps.executeUpdate();
                 try (ResultSet rs = ps.getGeneratedKeys()) { rs.next(); orderId = rs.getInt(1); order.setId(orderId); }
             }
@@ -144,6 +145,7 @@ public class PendingOrderDAOImpl implements PendingOrderDAO {
         String d1 = rs.getString("order_date");    if (d1 != null) o.setOrderDate(LocalDate.parse(d1));
         String d2 = rs.getString("expected_date"); if (d2 != null) o.setExpectedDate(LocalDate.parse(d2));
         o.setTotalAmount(rs.getDouble("total_amount"));
+        try { o.setVatRate(rs.getDouble("vat_rate")); } catch (SQLException ignored) { o.setVatRate(10); }
         o.setStatus(rs.getString("status"));
         o.setNote(rs.getString("note"));
         return o;

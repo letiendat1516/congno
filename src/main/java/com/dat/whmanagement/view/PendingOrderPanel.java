@@ -285,6 +285,8 @@ public class PendingOrderPanel extends BorderPane {
         DatePicker dpOrder    = new DatePicker(LocalDate.now());
         DatePicker dpExpected = new DatePicker(LocalDate.now().plusWeeks(1));
         TextField  tfNote     = new TextField(); tfNote.setPromptText("Ghi chú...");
+        TextField  tfVatRate  = new TextField("10");
+        tfVatRate.setPromptText("% thuế"); tfVatRate.setPrefWidth(80);
 
         GridPane headerGrid = new GridPane();
         headerGrid.setHgap(12); headerGrid.setVgap(10);
@@ -295,7 +297,8 @@ public class PendingOrderPanel extends BorderPane {
         headerGrid.addRow(1, new Label("Khách hàng *:"),    cbCustomer);
         headerGrid.addRow(2, new Label("Ngày đặt:"),        dpOrder);
         headerGrid.addRow(3, new Label("Ngày dự kiến:"),    dpExpected);
-        headerGrid.addRow(4, new Label("Ghi chú:"),         tfNote);
+        headerGrid.addRow(4, new Label("Thuế (%):"),        tfVatRate);
+        headerGrid.addRow(5, new Label("Ghi chú:"),         tfNote);
 
         // Chi tiết sản phẩm
         ObservableList<PendingOrderDetail> details = FXCollections.observableArrayList();
@@ -329,11 +332,26 @@ public class PendingOrderPanel extends BorderPane {
         });
         detailTable.getColumns().addAll(dCode, dName, dUnit, dQty, dPrice, dTotal, dDel);
 
+        Label lblSubVal   = new Label("0 ₫");
+        Label lblVATLabel = new Label("Thuế (10%):");
+        Label lblVATVal   = new Label("0 ₫");
         Label lblTotalVal = new Label("0 ₫");
         lblTotalVal.setFont(Font.font("System", FontWeight.BOLD, 13));
         lblTotalVal.setStyle("-fx-text-fill: #1976D2;");
-        Runnable refreshTotal = () -> lblTotalVal.setText(CURRENCY.format(details.stream().mapToDouble(PendingOrderDetail::getTotal).sum()) + " ₫");
+        Runnable refreshTotal = () -> {
+            double sub = details.stream().mapToDouble(PendingOrderDetail::getTotal).sum();
+            double vatRate = 10;
+            try { vatRate = Double.parseDouble(tfVatRate.getText().trim()); } catch (NumberFormatException ignored) {}
+            double vat   = sub * vatRate / 100;
+            double total = sub + vat;
+            lblSubVal.setText(CURRENCY.format(sub) + " ₫");
+            lblVATLabel.setText("Thuế (" + (int) vatRate + "%):");
+            lblVATVal.setText(CURRENCY.format(vat) + " ₫");
+            lblTotalVal.setText(CURRENCY.format(total) + " ₫");
+        };
         details.addListener((javafx.collections.ListChangeListener<PendingOrderDetail>) c -> refreshTotal.run());
+        refreshTotal.run();
+        tfVatRate.textProperty().addListener((obs, o, v) -> refreshTotal.run());
 
         List<Product> products = productService.getAll();
         ComboBox<Product> cbProd = new ComboBox<>();
@@ -363,7 +381,18 @@ public class PendingOrderPanel extends BorderPane {
         addRow.setAlignment(Pos.CENTER_LEFT);
         addRow.setPadding(new Insets(6, 0, 0, 0));
 
-        HBox totalBar = new HBox(8, new Label("Tổng tiền (chưa VAT):"), lblTotalVal);
+        GridPane summaryGrid = new GridPane();
+        summaryGrid.setHgap(12); summaryGrid.setVgap(5);
+        summaryGrid.setPadding(new Insets(6, 0, 0, 0));
+        ColumnConstraints sc1 = new ColumnConstraints(140);
+        ColumnConstraints sc2 = new ColumnConstraints(); sc2.setHgrow(Priority.ALWAYS);
+        summaryGrid.getColumnConstraints().addAll(sc1, sc2);
+        summaryGrid.addRow(0, new Label("Tạm tính:"),       lblSubVal);
+        summaryGrid.addRow(1, lblVATLabel,                   lblVATVal);
+        Label totTitle = new Label("Tổng cộng:");
+        totTitle.setFont(Font.font("System", FontWeight.BOLD, 13));
+        summaryGrid.addRow(2, totTitle, lblTotalVal);
+        HBox totalBar = new HBox(summaryGrid);
         totalBar.setAlignment(Pos.CENTER_RIGHT);
 
         Label lblError = new Label();
@@ -399,7 +428,11 @@ public class PendingOrderPanel extends BorderPane {
                 order.setCustomerName(cust.getName());
                 order.setOrderDate(dpOrder.getValue());
                 order.setExpectedDate(dpExpected.getValue());
-                order.setTotalAmount(details.stream().mapToDouble(PendingOrderDetail::getTotal).sum());
+                double sub = details.stream().mapToDouble(PendingOrderDetail::getTotal).sum();
+                double vatRate = 10;
+                try { vatRate = Double.parseDouble(tfVatRate.getText().trim()); } catch (NumberFormatException ignored) {}
+                order.setTotalAmount(Math.round(sub * (1 + vatRate / 100) * 100.0) / 100.0);
+                order.setVatRate(vatRate);
                 order.setNote(tfNote.getText().trim());
                 order.setDetails(new java.util.ArrayList<>(details));
                 service.create(order);
