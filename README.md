@@ -3,7 +3,7 @@
 > **Dự án:** Quản Lý Kho (whmanagement)  
 > **Ngày tạo:** 04/03/2026  
 > **Phiên bản:** 1.0  
-> **Tác giả:** Đội phát triển  
+> **Tác giả:** Lê Tiến Đạt
 
 ---
 
